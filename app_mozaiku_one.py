@@ -399,595 +399,565 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>AI 複数人物 顔認識モザイク＆検出通知</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', 'Meiryo', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            background-color: #f4f6f9;
-            color: #333;
-        }
-        .container {
-            max-width: 960px;
-            width: 100%;
-        }
-        .top-grid {
-            display: grid;
-            grid-template-columns: 1.35fr 0.65fr;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        @media (max-width: 820px) {
-            .top-grid { grid-template-columns: 1fr; }
-        }
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-        }
-        .card h3 {
-            margin-top: 0;
-            font-size: 16px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-        }
-        .add-person-btn {
-            background: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            padding: 5px 12px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.15s;
-        }
-        .add-person-btn:hover {
-            background: #0056b3;
-        }
-        #persons-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            max-height: 420px;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-        .person-card {
-            border: 1px solid #dce3ec;
-            border-left: 4px solid #007bff;
-            border-radius: 6px;
-            padding: 10px 12px;
-            background: #fcfdff;
-        }
-        .person-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        .person-name-input {
-            font-size: 14px;
-            font-weight: bold;
-            padding: 4px 8px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            width: 180px;
-            color: #222;
-        }
-        .person-name-input:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
-        }
-        .person-drop-zone {
-            border: 1.5px dashed #7aa7e9;
-            border-radius: 5px;
-            padding: 8px;
-            text-align: center;
-            font-size: 12px;
-            color: #555;
-            background: #fff;
-            cursor: pointer;
-            transition: 0.15s;
-        }
-        .person-drop-zone.dragover {
-            background: #e3f2fd;
-            border-color: #0056b3;
-        }
-        .target-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 8px;
-        }
-        .target-chip {
-            position: relative;
-            width: 48px;
-            height: 48px;
-            border-radius: 5px;
-            overflow: hidden;
-            border: 2px solid #28a745;
-        }
-        .target-chip.boost {
-            border-color: #ff9800;
-        }
-        .target-chip img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .target-chip .badge {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            font-size: 8px;
-            text-align: center;
-            background: rgba(0,0,0,0.65);
-            color: #fff;
-            padding: 1px 0;
-        }
-        .target-chip .del-btn {
-            position: absolute;
-            top: 1px;
-            right: 1px;
-            background: rgba(220, 53, 69, 0.9);
-            color: #fff;
-            border: none;
-            border-radius: 50%;
-            width: 15px;
-            height: 15px;
-            font-size: 10px;
-            line-height: 13px;
-            cursor: pointer;
-            padding: 0;
-        }
-        .person-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 8px;
-            align-items: center;
-        }
-        .person-msg {
-            font-size: 11px;
-            color: #666;
-            margin-top: 4px;
-        }
-        .sub-btn {
-            background: #f8f9fa;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 11px;
-            cursor: pointer;
-            color: #333;
-            transition: 0.15s;
-        }
-        .sub-btn:hover:not(:disabled) {
-            background: #e2e6ea;
-        }
-        .sub-btn.accent {
-            background: #fff3cd;
-            border-color: #ffc107;
-            color: #856404;
-            font-weight: bold;
-        }
-        .sub-btn.danger {
-            color: #dc3545;
-            border-color: #f5c6cb;
-            background: #fff5f5;
-        }
-        .sub-btn.danger:hover {
-            background: #f8d7da;
-        }
-        .sub-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .video-drop-zone {
-            height: 120px;
-            border: 2px dashed #007bff;
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background: #fafcff;
-            cursor: pointer;
-            text-align: center;
-            padding: 10px;
-            transition: 0.2s;
-            font-size: 13px;
-            color: #555;
-        }
-        .video-drop-zone.dragover {
-            background: #e3f2fd;
-            border-color: #0056b3;
-        }
-        /* コントロールパネル */
-        .settings-card {
-            margin-bottom: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .settings-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 14px 22px;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .mode-switch {
-            display: flex;
-            gap: 10px;
-            background: #eef2f7;
-            padding: 4px;
-            border-radius: 6px;
-        }
-        .mode-switch label {
-            padding: 6px 14px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-            transition: 0.15s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .mode-switch input[type="radio"] {
-            accent-color: #007bff;
-        }
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-        }
-        #mosaic-options-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px 24px;
-            align-items: center;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-        }
-        #notify-options-bar {
-            display: none;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-            font-size: 13px;
-            color: #0056b3;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        #active-detect-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .detect-pill {
-            background: #28a745;
-            color: #fff;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-            animation: pulseIn 0.2s ease;
-        }
-        @keyframes pulseIn {
-            from { transform: scale(0.9); opacity: 0.6; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        #status {
-            text-align: center;
-            margin-bottom: 10px;
-            font-weight: bold;
-            color: #0056b3;
-        }
-        .player-wrapper {
-            width: 100%;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            margin-bottom: 16px;
-            position: relative;
-        }
-        #preview-box {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 240px;
-            background: #111;
-        }
-        #stream-img {
-            width: 100%;
-            height: auto;
-            display: none;
-        }
-        #player-bar {
-            display: none;
-            background: #1e2229;
-            color: #fff;
-            padding: 10px 16px 14px;
-            flex-direction: column;
-            gap: 8px;
-        }
-        #seek-bar {
-            width: 100%;
-            cursor: pointer;
-            accent-color: #007bff;
-            height: 6px;
-        }
-        .player-buttons {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .btn-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .player-btn {
-            background: #2f3542;
-            color: #fff;
-            border: 1px solid #444c5c;
-            border-radius: 4px;
-            padding: 5px 12px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: 0.15s;
-        }
-        .player-btn:hover {
-            background: #007bff;
-            border-color: #007bff;
-        }
-        #time-display {
-            font-family: monospace;
-            font-size: 14px;
-            color: #d1d8e0;
-        }
-        #export-card {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-        .primary-btn {
-            background: #28a745;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 10px 20px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .primary-btn:hover:not(:disabled) {
-            background: #218838;
-        }
-        .primary-btn:disabled {
-            background: #94d3a2;
-            cursor: not-allowed;
-        }
-        .download-link-btn {
-            display: none;
-            background: #007bff;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 6px;
-            padding: 10px 18px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .download-link-btn:hover {
-            background: #0056b3;
-        }
-        .progress-area {
-            flex: 1;
-            min-width: 240px;
-        }
-        .progress-bg {
-            width: 100%;
-            height: 10px;
-            background: #e9ecef;
-            border-radius: 5px;
-            overflow: hidden;
-            margin-top: 6px;
-            display: none;
-        }
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: #28a745;
-            transition: width 0.2s;
-        }
-        #export-status-text {
-            font-size: 13px;
-            color: #555;
-        }
-        /* ポップアップ通知（トースト）コンテナ */
-        #toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-            max-width: 340px;
-        }
-        .toast-popup {
-            background: rgba(24, 30, 42, 0.95);
-            color: #fff;
-            border-left: 5px solid #00d2ff;
-            border-radius: 8px;
-            padding: 12px 16px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideInToast 0.25s ease-out;
-            pointer-events: auto;
-        }
-        .toast-icon {
-            font-size: 22px;
-        }
-        .toast-body {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        .toast-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #4dd0e1;
-        }
-        .toast-sub {
-            font-size: 12px;
-            color: #cfd8dc;
-        }
-        @keyframes slideInToast {
-            from { transform: translateX(40px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>顔認識モザイク ＆ 検出通知</title>
+<style>
+    :root {
+        --bg: #f3f4f6;
+        --surface: #ffffff;
+        --subtle: #fafbfc;
+        --line: #e1e4e8;
+        --line-strong: #c9ced6;
+        --ink: #1f2937;
+        --muted: #667085;
+        --accent: #1d5fd1;
+        --accent-hover: #174fb0;
+        --accent-soft: #e8f0fd;
+        --danger: #c0392b;
+        --stage: #17191c;
+        --radius: 6px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+        height: 100vh;
+        min-height: 680px;
+        display: flex;
+        flex-direction: column;
+        font-family: "Yu Gothic UI", "Hiragino Kaku Gothic ProN", "Meiryo", "Segoe UI", sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--ink);
+        background: var(--bg);
+    }
+
+    /* ---------- ヘッダー ---------- */
+    .app-header {
+        flex: none;
+        height: 52px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+    }
+    .app-header h1 { margin: 0; font-size: 16px; font-weight: 700; }
+    .app-header span { font-size: 12px; color: var(--muted); }
+
+    /* ---------- 全体レイアウト ---------- */
+    .app {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 420px;
+        gap: 16px;
+        padding: 16px;
+    }
+    .viewer, .side {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+    }
+    .viewer { overflow: hidden; }
+
+    .num {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 20px;
+        text-align: center;
+    }
+
+    /* ---------- ボタン ---------- */
+    .btn {
+        font: inherit;
+        font-size: 13px;
+        height: 34px;
+        padding: 0 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius);
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .btn:hover:not(:disabled) { background: var(--bg); }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+    .btn.primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn.small { height: 28px; padding: 0 10px; font-size: 12px; }
+    .btn.block { width: 100%; height: 40px; font-size: 14px; font-weight: 700; }
+    .link-btn {
+        font: inherit;
+        font-size: 12px;
+        padding: 4px 6px;
+        color: var(--muted);
+        background: none;
+        border: 0;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .link-btn:hover { color: var(--danger); }
+    .link-btn:focus-visible { outline: 2px solid var(--accent); }
+
+    /* ---------- スライダー ---------- */
+    input[type=range] {
+        -webkit-appearance: none;
+        appearance: none;
+        display: block;
+        width: 100%;
+        height: 20px;
+        margin: 0;
+        background: transparent;
+        cursor: pointer;
+    }
+    input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+    input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+    input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line-strong); }
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px; height: 16px; margin-top: -6px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px var(--accent);
+    }
+    input[type=range]::-moz-range-thumb {
+        width: 12px; height: 12px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px var(--accent);
+    }
+    input[type=range]:disabled { cursor: not-allowed; opacity: 0.45; }
+    #seek-bar::-webkit-slider-runnable-track {
+        background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line-strong) var(--p, 0%));
+    }
+    #seek-bar::-moz-range-track {
+        background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line-strong) var(--p, 0%));
+    }
+
+    /* ---------- 左：プレビュー ---------- */
+    .viewer-head {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+    }
+    .viewer-head h2 { margin: 0; font-size: 15px; }
+    #video-status {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    #status { flex: none; font-size: 12px; color: var(--muted); }
+
+    .stage {
+        position: relative;
+        flex: 1;
+        min-height: 240px;
+        background: var(--subtle);
+    }
+    .stage.live { background: var(--stage); }
+    .stage.live.dragover { outline: 3px dashed var(--accent); outline-offset: -3px; }
+    #stream-img {
+        display: none;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        cursor: pointer;
+    }
+    .stage.live #stream-img { display: block; }
+
+    .video-drop {
+        position: absolute;
+        inset: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        text-align: center;
+        color: var(--muted);
+        background: var(--surface);
+        border: 2px dashed var(--line-strong);
+        border-radius: var(--radius);
+        cursor: pointer;
+    }
+    .video-drop:hover, .stage.dragover .video-drop { border-color: var(--accent); background: var(--accent-soft); }
+    .video-drop .vd-title { font-size: 18px; font-weight: 700; color: var(--ink); }
+    .video-drop .vd-note { font-size: 12px; }
+    .stage.live .video-drop { display: none; }
+
+    #toast-container {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+    }
+    .toast-popup {
+        min-width: 240px;
+        max-width: 320px;
+        padding: 10px 14px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        border-radius: var(--radius);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+        animation: toast-in 0.2s ease-out;
+    }
+    .toast-title { font-size: 14px; font-weight: 700; }
+    .toast-sub { margin-top: 2px; font-size: 12px; color: var(--muted); }
+    @keyframes toast-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .toast-popup { animation: none; } }
+
+    .controls {
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-top: 1px solid var(--line);
+    }
+    .controls .play { min-width: 96px; }
+    #seek-bar { flex: 1; min-width: 120px; margin: 0 8px; }
+    #time-display {
+        min-width: 100px;
+        text-align: right;
+        font-size: 13px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .detect-strip {
+        flex: none;
+        display: none;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-top: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--muted);
+    }
+    #active-detect-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+    #active-detect-badges:empty::before { content: "いません"; }
+    .pill {
+        padding: 1px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border-radius: 999px;
+    }
+
+    /* ---------- 右：操作パネル ---------- */
+    .side-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+    .block { padding: 16px; }
+    .block + .block { border-top: 1px solid var(--line); }
+    .block-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .block-head h2 { flex: 1; margin: 0; font-size: 15px; }
+    .block-help { margin: 0 0 12px; font-size: 12px; color: var(--muted); }
+
+    .fields, .opt-group { display: flex; flex-direction: column; gap: 16px; }
+    .field-label { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    .val { font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .range-ends { display: flex; justify-content: space-between; margin-top: 2px; font-size: 11px; color: var(--muted); }
+    .field-help { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+    #notify-options-bar { display: none; font-size: 13px; color: var(--muted); }
+
+    .seg { display: flex; padding: 3px; gap: 2px; background: var(--bg); border-radius: var(--radius); }
+    .seg label { position: relative; flex: 1; cursor: pointer; }
+    .seg input { position: absolute; opacity: 0; pointer-events: none; }
+    .seg span {
+        display: block;
+        padding: 6px 8px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+        border-radius: 4px;
+    }
+    .seg input:checked + span {
+        color: var(--accent);
+        font-weight: 700;
+        background: var(--surface);
+        box-shadow: 0 0 0 1px var(--line-strong);
+    }
+    .seg input:focus-visible + span { outline: 2px solid var(--accent); }
+
+    .switch { position: relative; display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; }
+    .switch input { position: absolute; opacity: 0; pointer-events: none; }
+    .switch .track {
+        position: relative;
+        flex: none;
+        width: 34px; height: 20px;
+        border-radius: 10px;
+        background: var(--line-strong);
+        transition: background 0.15s;
+    }
+    .switch .track::after {
+        content: "";
+        position: absolute;
+        top: 2px; left: 2px;
+        width: 16px; height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform 0.15s;
+    }
+    .switch input:checked + .track { background: var(--accent); }
+    .switch input:checked + .track::after { transform: translateX(14px); }
+    .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .adv { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .adv summary { cursor: pointer; font-size: 13px; font-weight: 700; }
+    .adv .fields { margin-top: 14px; }
+
+    /* ---------- 人物カード ---------- */
+    #persons-container { max-height: max(300px, 42vh); overflow-y: auto; }
+    .person { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); }
+    .person + .person { margin-top: 10px; }
+    .person-head { display: flex; align-items: center; gap: 8px; }
+    .person-name {
+        flex: 1;
+        min-width: 0;
+        height: 32px;
+        padding: 0 8px;
+        font: inherit;
+        font-weight: 700;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+    }
+    .person-name:hover { border-color: var(--line-strong); }
+    .person-name:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+
+    .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .thumb {
+        position: relative;
+        width: 56px; height: 56px;
+        overflow: hidden;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+    }
+    .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .thumb .tag {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        font-size: 10px; line-height: 14px; text-align: center;
+        color: #fff; background: rgba(23, 25, 28, 0.72);
+    }
+    .thumb .del {
+        position: absolute; top: 2px; right: 2px;
+        width: 18px; height: 18px; padding: 0;
+        font-size: 12px; line-height: 18px;
+        color: #fff; background: rgba(23, 25, 28, 0.72);
+        border: 0; border-radius: 50%;
+        cursor: pointer;
+        opacity: 0;
+    }
+    .thumb:hover .del, .thumb .del:focus-visible { opacity: 1; }
+
+    .drop {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 12px;
+        color: var(--muted);
+        background: var(--subtle);
+        border: 1px dashed var(--line-strong);
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .drop:hover, .drop.dragover { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+    .drop.wide { flex-direction: column; gap: 2px; width: 100%; height: 64px; margin-top: 10px; }
+    .drop.wide strong { font-size: 13px; color: var(--ink); }
+    .drop.tile { width: 56px; height: 56px; font-size: 22px; line-height: 1; }
+
+    .person-msg { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    .person-msg:empty { display: none; }
+    .person-msg.busy { color: var(--accent); }
+    .person-msg.error { color: var(--danger); }
+    .person-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+    /* ---------- 書き出し ---------- */
+    .export { flex: none; padding: 14px 16px 16px; background: var(--subtle); border-top: 1px solid var(--line); border-radius: 0 0 var(--radius) var(--radius); }
+    .progress { display: none; height: 6px; margin: 10px 0 0; overflow: hidden; background: var(--line); border-radius: 3px; }
+    #export-progress-fill { width: 0; height: 100%; background: var(--accent); transition: width 0.2s; }
+    .export-status { min-height: 20px; margin: 8px 0 10px; font-size: 12px; color: var(--muted); }
+    .export-status.error { color: var(--danger); }
+    #manual-download-btn { display: none; margin-top: 8px; }
+
+    /* ---------- 狭い画面向けの退避 ---------- */
+    @media (max-width: 1100px) {
+        body { height: auto; }
+        .app { grid-template-columns: minmax(0, 1fr); }
+        .stage { flex: none; height: 56vw; }
+        .side-scroll { overflow: visible; }
+    }
+</style>
 </head>
 <body>
 
-<!-- ポップアップ顔検出通知エリア -->
-<div id="toast-container"></div>
+<header class="app-header">
+    <h1>顔認識モザイク ＆ 検出通知</h1>
+    <span>動画や写真は、このパソコンの中だけで処理されます</span>
+</header>
 
-<div class="container">
-    <h2 style="text-align:center; margin-bottom:16px;">AI 複数人物 顔認識モザイク ＆ 検出通知</h2>
+<div class="app">
 
-    <div class="top-grid">
-        <!-- STEP 1: 複数人物の顔登録 -->
-        <div class="card">
-            <h3>
-                <span>1. 検出する人物の登録（複数人対応）</span>
-                <button class="add-person-btn" onclick="addPerson()">＋ 人物を追加</button>
-            </h3>
-            <div id="persons-container"></div>
+    <!-- 左：プレビュー -->
+    <main class="viewer">
+        <div class="viewer-head">
+            <span class="num">1</span>
+            <h2>動画</h2>
+            <div id="video-status">動画が選ばれていません</div>
+            <div id="status"></div>
+            <button type="button" class="btn small" id="change-video-btn" style="display:none;" onclick="document.getElementById('video-input').click()">動画を変更</button>
         </div>
 
-        <!-- STEP 2: 対象動画 -->
-        <div class="card">
-            <h3>2. 処理する動画ファイル</h3>
-            <div id="video-drop" class="video-drop-zone">
-                <span>MP4 ファイルをドロップ<br>またはクリックして選択</span>
-                <input type="file" id="video-input" accept="video/mp4" style="display: none;">
+        <div id="preview-box" class="stage empty">
+            <div id="video-drop" class="video-drop">
+                <div class="vd-title">ここに動画をドロップ</div>
+                <div>または</div>
+                <button type="button" class="btn primary">動画ファイルを選ぶ</button>
+                <div class="vd-note">MP4形式に対応しています</div>
             </div>
-            <div style="margin-top: 12px; font-size: 13px; color: #666;" id="video-status">
-                動画未選択
-            </div>
+            <img id="stream-img" alt="プレビュー映像" title="クリックで再生・一時停止">
+            <div id="toast-container"></div>
         </div>
-    </div>
+        <input type="file" id="video-input" accept="video/mp4" style="display:none;">
 
-    <!-- STEP 3: モード＆詳細設定 -->
-    <div class="card settings-card">
-        <div class="settings-row">
-            <div class="mode-switch">
-                <label>
-                    <input type="radio" name="action_mode" value="mosaic" checked onchange="updateSettings()">
-                    🎭 モザイク処理
-                </label>
-                <label>
-                    <input type="radio" name="action_mode" value="notify" onchange="updateSettings()">
-                    🔔 ポップアップ顔検出通知（人物名表示）
-                </label>
-            </div>
-
-            <div class="control-group">
-                <label for="threshold"><strong>一致閾値:</strong> <span id="thresh-val">0.36</span></label>
-                <input type="range" id="threshold" min="0.20" max="0.65" step="0.01" value="0.36" oninput="updateSettings()" style="width:95px;">
-            </div>
-
-            <div class="control-group">
-                <label for="interp-gap"><strong>チラつき補間:</strong> <span id="interp-val">5f</span></label>
-                <input type="range" id="interp-gap" min="0" max="50" step="1" value="5" oninput="updateSettings()" style="width:95px;">
-            </div>
-
-            <div class="control-group">
-                <label><input type="checkbox" id="show-debug" checked onchange="updateSettings()"> 枠・人物名表示</label>
-            </div>
+        <div id="player-bar" class="controls">
+            <button type="button" class="btn primary play" id="play-pause-btn" onclick="togglePause()" disabled>一時停止</button>
+            <button type="button" class="btn" onclick="skipSeconds(-5)" disabled>5秒戻る</button>
+            <button type="button" class="btn" onclick="skipSeconds(5)" disabled>5秒進む</button>
+            <input type="range" id="seek-bar" min="0" max="100" value="0" aria-label="再生位置" disabled>
+            <div id="time-display">00:00 / 00:00</div>
         </div>
 
-        <!-- モザイク処理モード時のみ表示される設定 -->
-        <div id="mosaic-options-bar">
-            <div class="control-group">
-                <strong>モザイク対象:</strong>
-                <label><input type="radio" name="mosaic_target_mode" value="target_only" checked onchange="updateSettings()"> 登録人物「だけ」</label>
-                <label><input type="radio" name="mosaic_target_mode" value="except_target" onchange="updateSettings()"> 登録人物「以外」</label>
-            </div>
-
-            <div class="control-group">
-                <label for="mosaic-scale"><strong>モザイクの度合い（粗さ）:</strong> <span id="mosaic-scale-val">16</span></label>
-                <input type="range" id="mosaic-scale" min="4" max="50" step="1" value="16" oninput="updateSettings()" style="width:130px;">
-            </div>
-        </div>
-
-        <!-- ポップアップ顔検出通知モード時のステータスバー -->
-        <div id="notify-options-bar">
-            <span>🔔 登録人物が映ると画面右上に人物名のポップアップ通知を表示します</span>
+        <div class="detect-strip" id="detect-strip">
+            <span>いま映っている登録人物:</span>
             <div id="active-detect-badges"></div>
         </div>
-    </div>
+    </main>
 
-    <div id="status">人物の顔写真と動画を選択してください</div>
+    <!-- 右：操作パネル -->
+    <aside class="side">
+        <div class="side-scroll">
 
-    <div class="player-wrapper">
-        <div id="preview-box">
-            <img id="stream-img" alt="映像ストリーム">
-        </div>
-        <div id="player-bar">
-            <input type="range" id="seek-bar" min="0" max="100" value="0">
-            <div class="player-buttons">
-                <div class="btn-group">
-                    <button class="player-btn" id="play-pause-btn" onclick="togglePause()">❚❚ 一時停止</button>
-                    <button class="player-btn" onclick="skipSeconds(-5)">◀ 5秒戻す</button>
-                    <button class="player-btn" onclick="skipSeconds(5)">5秒進む ▶</button>
+            <section class="block">
+                <div class="block-head">
+                    <span class="num">2</span>
+                    <h2>検出したい人物</h2>
+                    <button type="button" class="btn small" onclick="addPerson()">人物を追加</button>
                 </div>
-                <div id="time-display">00:00 / 00:00</div>
-            </div>
-        </div>
-    </div>
+                <p class="block-help">同じ人の写真を2〜3枚登録すると、見つけやすくなります。</p>
+                <div id="persons-container"></div>
+            </section>
 
-    <div class="card" id="export-card">
-        <div class="progress-area">
-            <div id="export-status-text">現在の設定で動画全体を高速書き出しします</div>
-            <div class="progress-bg" id="export-progress-bg">
-                <div class="progress-fill" id="export-progress-fill"></div>
+            <section class="block">
+                <div class="block-head">
+                    <span class="num">3</span>
+                    <h2>処理の設定</h2>
+                </div>
+
+                <div class="fields">
+                    <div class="field">
+                        <div class="field-label">見つけたときの動作</div>
+                        <div class="seg">
+                            <label><input type="radio" name="action_mode" value="mosaic" checked onchange="updateSettings()"><span>モザイクをかける</span></label>
+                            <label><input type="radio" name="action_mode" value="notify" onchange="updateSettings()"><span>画面に通知する</span></label>
+                        </div>
+                    </div>
+
+                    <div id="mosaic-options-bar" class="opt-group">
+                        <div class="field">
+                            <div class="field-label">モザイクをかける人</div>
+                            <div class="seg">
+                                <label><input type="radio" name="mosaic_target_mode" value="target_only" checked onchange="updateSettings()"><span>登録した人だけ</span></label>
+                                <label><input type="radio" name="mosaic_target_mode" value="except_target" onchange="updateSettings()"><span>登録した人以外</span></label>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <div class="field-label"><span>モザイクの強さ</span><span class="val" id="mosaic-scale-val">16</span></div>
+                            <input type="range" id="mosaic-scale" min="4" max="50" step="1" value="16" oninput="updateSettings()">
+                            <div class="range-ends"><span>細かい</span><span>粗い</span></div>
+                        </div>
+                    </div>
+
+                    <div id="notify-options-bar">
+                        登録した人が映ると、動画の右上に名前をお知らせします。書き出した動画には、名前の付いた枠が入ります。
+                    </div>
+
+                    <label class="switch">
+                        <input type="checkbox" id="show-debug" checked onchange="updateSettings()">
+                        <span class="track"></span>
+                        <span>プレビューに枠と名前を表示する</span>
+                    </label>
+                </div>
+
+                <details class="adv">
+                    <summary>認識の調整（見つからない・別の人にかかるとき）</summary>
+                    <div class="fields">
+                        <div class="field">
+                            <div class="field-label"><span>人物を見分けるきびしさ</span><span class="val" id="thresh-val">0.36</span></div>
+                            <input type="range" id="threshold" min="0.20" max="0.65" step="0.01" value="0.36" oninput="updateSettings()">
+                            <div class="range-ends"><span>ゆるい</span><span>きびしい</span></div>
+                            <p class="field-help">ゆるくすると見つけやすくなりますが、別の人も拾いやすくなります。</p>
+                        </div>
+                        <div class="field">
+                            <div class="field-label"><span>途切れたときの補正</span><span class="val" id="interp-val">5フレーム</span></div>
+                            <input type="range" id="interp-gap" min="0" max="50" step="1" value="5" oninput="updateSettings()">
+                            <div class="range-ends"><span>なし</span><span>強い</span></div>
+                            <p class="field-help">横を向いた瞬間などで検出が途切れても、前後の映像から補って、モザイクのちらつきを防ぎます。</p>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+        </div>
+
+        <section class="export" id="export-card">
+            <div class="block-head">
+                <span class="num">4</span>
+                <h2>書き出し</h2>
             </div>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-            <a id="manual-download-btn" class="download-link-btn" href="/download_video">⬇ MP4を保存</a>
-            <button id="export-btn" class="primary-btn" onclick="startExport()">処理済み動画を書き出し</button>
-        </div>
-    </div>
+            <div class="progress" id="export-progress-bg"><div id="export-progress-fill"></div></div>
+            <div class="export-status" id="export-status-text">動画を選ぶと書き出せます</div>
+            <button type="button" id="export-btn" class="btn primary block" onclick="startExport()" disabled>処理した動画を書き出す</button>
+            <a id="manual-download-btn" class="btn block" href="/download_video">もう一度ダウンロード</a>
+        </section>
+    </aside>
+
 </div>
 
 <script>
@@ -999,15 +969,16 @@ HTML_TEMPLATE = """
     let progressTimer = null;
     let exportTimer = null;
 
-    // ポップアップ通知の重複・連続表示制御用マップ: { personId: lastNotifiedTimestampMs }
+    // ポップアップ通知の連続表示を防ぐ: { personId: 最後に通知した時刻(ms) }
     const lastPopupTimes = {};
     const POPUP_COOLDOWN_MS = 4000;
 
     const seekBar = document.getElementById('seek-bar');
     const playPauseBtn = document.getElementById('play-pause-btn');
     const timeDisplay = document.getElementById('time-display');
+    const stage = document.getElementById('preview-box');
+    const streamImg = document.getElementById('stream-img');
 
-    // 初期人物リストの取得・描画
     fetch('/get_persons')
         .then(res => res.json())
         .then(data => {
@@ -1015,21 +986,31 @@ HTML_TEMPLATE = """
             renderPersons();
         });
 
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function formatTime(seconds) {
+        if (!isFinite(seconds) || seconds < 0) seconds = 0;
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
     function showDetectionPopup(personName, score, frameIdx) {
         const container = document.getElementById('toast-container');
-        const timeStr = formatTime(frameIdx / videoFps);
         const toast = document.createElement('div');
         toast.className = 'toast-popup';
         toast.innerHTML = `
-            <div class="toast-icon">🔔</div>
-            <div class="toast-body">
-                <div class="toast-title">${escapeHtml(personName)} を検出しました</div>
-                <div class="toast-sub">再生位置: ${timeStr} ／ 一致度: ${(score * 100).toFixed(0)}%</div>
-            </div>
+            <div class="toast-title">${escapeHtml(personName)} を検出しました</div>
+            <div class="toast-sub">再生位置 ${formatTime(frameIdx / videoFps)} ／ 一致度 ${(score * 100).toFixed(0)}%</div>
         `;
         container.appendChild(toast);
 
-        // 3.5秒後に自動でフェードアウト削除
         setTimeout(() => {
             toast.style.transition = 'opacity 0.3s, transform 0.3s';
             toast.style.opacity = '0';
@@ -1038,12 +1019,17 @@ HTML_TEMPLATE = """
         }, 3500);
     }
 
-    function escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
+    /* ---------- 人物の登録 ---------- */
+    function entryCount(personId) {
+        const p = personsData.find(x => x.id === personId);
+        return p ? (p.entries || []).length : 0;
+    }
+
+    function setPersonMsg(personId, text, kind) {
+        const el = document.getElementById(`msg-${personId}`);
+        if (!el) return;
+        el.textContent = text;
+        el.className = 'person-msg' + (kind ? ' ' + kind : '');
     }
 
     function addPerson() {
@@ -1058,6 +1044,11 @@ HTML_TEMPLATE = """
     }
 
     function removePerson(personId) {
+        const p = personsData.find(x => x.id === personId);
+        if (p && (p.entries || []).length > 0) {
+            const label = p.name ? '「' + p.name + '」' : 'この人物';
+            if (!confirm(label + 'の登録を削除します。よろしいですか？')) return;
+        }
         fetch('/remove_person', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1080,60 +1071,56 @@ HTML_TEMPLATE = """
         });
     }
 
-    function renderPersons(statusMessages = {}) {
+    function renderPersons(messages = {}, kinds = {}) {
         const container = document.getElementById('persons-container');
         container.innerHTML = '';
 
         personsData.forEach((person) => {
-            const hasEntries = person.entries && person.entries.length > 0;
+            const entries = person.entries || [];
+            const hasEntries = entries.length > 0;
             const card = document.createElement('div');
-            card.className = 'person-card';
+            card.className = 'person';
 
-            const chipsHtml = (person.entries || []).map(entry => `
-                <div class="target-chip ${entry.source === 'boost' ? 'boost' : ''}">
-                    <img src="data:image/jpeg;base64,${entry.crop_b64}" alt="顔">
-                    <span class="badge">${entry.source === 'boost' ? '動画抽出' : '登録画像'}</span>
-                    <button class="del-btn" title="削除" onclick="removeTargetEntry('${person.id}', '${entry.id}')">×</button>
+            const thumbsHtml = entries.map(entry => `
+                <div class="thumb" title="${entry.source === 'boost' ? '動画から自動で追加した顔' : '登録した写真の顔'}">
+                    <img src="data:image/jpeg;base64,${entry.crop_b64}" alt="登録した顔">
+                    ${entry.source === 'boost' ? '<span class="tag">自動</span>' : ''}
+                    <button type="button" class="del" title="この顔を削除" aria-label="この顔を削除"
+                            onclick="removeTargetEntry('${person.id}', '${entry.id}')">×</button>
                 </div>
             `).join('');
 
-            const msgText = statusMessages[person.id] ||
-                (hasEntries ? `登録済み顔パターン: ${person.entries.length}枚（左右反転含む ${person.entries.length * 2}通り）` : '顔画像をドロップまたは選択してください');
+            const mediaHtml = hasEntries
+                ? `<div class="thumbs">${thumbsHtml}<div class="drop tile" id="drop-${person.id}" title="顔写真を追加">＋</div></div>`
+                : `<div class="drop wide" id="drop-${person.id}"><strong>顔写真をここにドロップ</strong><span>またはクリックして選択（複数可）</span></div>`;
+
+            const msgText = messages[person.id] ||
+                (hasEntries ? `${entries.length}枚の顔を登録済み` : '');
+            const msgKind = kinds[person.id] || '';
 
             card.innerHTML = `
-                <div class="person-header">
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <span style="font-size:12px; color:#555;">人物名:</span>
-                        <input type="text" class="person-name-input" value="${escapeHtml(person.name)}"
-                               placeholder="名前を入力" onchange="updatePersonName('${person.id}', this.value)">
-                    </div>
-                    <button class="sub-btn danger" onclick="removePerson('${person.id}')">人物を削除</button>
+                <div class="person-head">
+                    <input type="text" class="person-name" value="${escapeHtml(person.name)}"
+                           placeholder="名前を入力" aria-label="人物の名前"
+                           onchange="updatePersonName('${person.id}', this.value)">
+                    <button type="button" class="link-btn" onclick="removePerson('${person.id}')">削除</button>
                 </div>
-
-                <div class="person-drop-zone" id="drop-${person.id}">
-                    <span>顔写真 (JPG / PNG) をここにドロップ（またはクリックして選択・複数枚可）</span>
-                    <input type="file" id="input-${person.id}" accept="image/*" multiple style="display:none;">
-                </div>
-
-                <div class="target-list">${chipsHtml}</div>
-                <div class="person-msg" id="msg-${person.id}">${msgText}</div>
-
+                ${mediaHtml}
+                <input type="file" id="input-${person.id}" accept="image/*" multiple style="display:none;">
+                <div class="person-msg ${msgKind}" id="msg-${person.id}">${escapeHtml(msgText)}</div>
                 <div class="person-actions">
-                    <button class="sub-btn accent" id="boost-${person.id}"
+                    <button type="button" class="btn small" id="boost-${person.id}"
+                            title="登録した写真に似た顔を動画の中から探して、自動で追加します。見つかりやすくなります。"
                             onclick="boostPersonFromVideo('${person.id}')"
-                            ${!(hasVideo && hasEntries) ? 'disabled' : ''}>
-                        ⚡ 動画内の本人顔で自動補強
-                    </button>
-                    <button class="sub-btn" id="cap-${person.id}"
+                            ${!(hasVideo && hasEntries) ? 'disabled' : ''}>動画から同じ顔を自動で追加</button>
+                    <button type="button" class="btn small" id="cap-${person.id}"
+                            title="動画を止めた場面に映っている顔を追加します。"
                             onclick="captureCurrentFrameForPerson('${person.id}')"
-                            ${!hasVideo ? 'disabled' : ''}>
-                        ＋ 今映っている顔を追加
-                    </button>
+                            ${!hasVideo ? 'disabled' : ''}>今の画面の顔を追加</button>
                 </div>
             `;
             container.appendChild(card);
 
-            // ドロップ＆ファイル選択イベントの紐付け
             const zone = document.getElementById(`drop-${person.id}`);
             const input = document.getElementById(`input-${person.id}`);
             zone.addEventListener('click', () => input.click());
@@ -1155,11 +1142,8 @@ HTML_TEMPLATE = """
     }
 
     function uploadPersonFaces(personId, files) {
-        const msgEl = document.getElementById(`msg-${personId}`);
-        if (msgEl) {
-            msgEl.textContent = '顔を解析・特徴量抽出中...';
-            msgEl.style.color = '#0056b3';
-        }
+        const before = entryCount(personId);
+        setPersonMsg(personId, '顔を読み取っています…', 'busy');
 
         const formData = new FormData();
         formData.append('person_id', personId);
@@ -1170,11 +1154,22 @@ HTML_TEMPLATE = """
         fetch('/upload_target', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
-                if (data.persons) {
-                    personsData = data.persons;
-                    renderPersons({ [personId]: data.message });
+                if (!data.persons) {
+                    setPersonMsg(personId, data.message || '登録できませんでした', 'error');
+                    return;
                 }
-            });
+                personsData = data.persons;
+                const added = entryCount(personId) - before;
+                if (added > 0) {
+                    renderPersons({ [personId]: `${added}枚の顔を追加しました（合計 ${entryCount(personId)}枚）` });
+                } else {
+                    renderPersons(
+                        { [personId]: data.message || '顔が見つかりませんでした。別の写真をお試しください。' },
+                        { [personId]: 'error' }
+                    );
+                }
+            })
+            .catch(() => setPersonMsg(personId, '通信に失敗しました。もう一度お試しください。', 'error'));
     }
 
     function removeTargetEntry(personId, entryId) {
@@ -1194,12 +1189,9 @@ HTML_TEMPLATE = """
 
     function boostPersonFromVideo(personId) {
         const btn = document.getElementById(`boost-${personId}`);
-        const msgEl = document.getElementById(`msg-${personId}`);
+        const before = entryCount(personId);
         if (btn) btn.disabled = true;
-        if (msgEl) {
-            msgEl.textContent = '動画内から本人顔をサンプリング抽出中...';
-            msgEl.style.color = '#856404';
-        }
+        setPersonMsg(personId, '動画の中から同じ人の顔を探しています…', 'busy');
 
         fetch('/boost_from_video', {
             method: 'POST',
@@ -1210,17 +1202,25 @@ HTML_TEMPLATE = """
         .then(data => {
             if (data.persons) {
                 personsData = data.persons;
-                renderPersons({ [personId]: data.message });
-            } else if (msgEl) {
+                const added = entryCount(personId) - before;
+                if (added > 0) {
+                    renderPersons({ [personId]: `動画から顔を${added}枚追加しました（合計 ${entryCount(personId)}枚）` });
+                } else {
+                    renderPersons({ [personId]: '追加できる顔が見つかりませんでした' }, { [personId]: 'error' });
+                }
+            } else {
                 if (btn) btn.disabled = false;
-                msgEl.textContent = data.message || '一致候補が見つかりませんでした';
-                msgEl.style.color = '#dc3545';
+                setPersonMsg(personId, data.message || '追加できる顔が見つかりませんでした', 'error');
             }
+        })
+        .catch(() => {
+            if (btn) btn.disabled = false;
+            setPersonMsg(personId, '通信に失敗しました。もう一度お試しください。', 'error');
         });
     }
 
     function captureCurrentFrameForPerson(personId) {
-        const msgEl = document.getElementById(`msg-${personId}`);
+        const before = entryCount(personId);
         fetch('/add_current_frame_face', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1230,35 +1230,42 @@ HTML_TEMPLATE = """
         .then(data => {
             if (data.persons) {
                 personsData = data.persons;
-                renderPersons({ [personId]: data.message });
-            } else if (msgEl) {
-                msgEl.textContent = data.message || '現在のフレームから顔を検出できませんでした';
-                msgEl.style.color = '#dc3545';
+                const added = entryCount(personId) - before;
+                renderPersons({ [personId]: added > 0 ? '今の画面の顔を追加しました' : (data.message || '') });
+            } else {
+                setPersonMsg(personId, data.message || '今の画面から顔を見つけられませんでした', 'error');
             }
-        });
+        })
+        .catch(() => setPersonMsg(personId, '通信に失敗しました。もう一度お試しください。', 'error'));
     }
 
-    function formatTime(seconds) {
-        if (!isFinite(seconds) || seconds < 0) seconds = 0;
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    /* ---------- 再生コントロール ---------- */
+    function setPlayLabel(paused) {
+        playPauseBtn.textContent = paused ? '再生' : '一時停止';
+    }
+
+    function updateSeekFill() {
+        const max = parseInt(seekBar.max, 10) || 1;
+        const pct = Math.max(0, Math.min(100, (parseInt(seekBar.value, 10) / max) * 100));
+        seekBar.style.setProperty('--p', pct + '%');
     }
 
     function updateTimeText(currentFrame) {
         const curSec = currentFrame / videoFps;
         const totSec = totalFrames / videoFps;
         timeDisplay.textContent = `${formatTime(curSec)} / ${formatTime(totSec)}`;
+        updateSeekFill();
+    }
+
+    function setControlsEnabled(enabled) {
+        document.querySelectorAll('#player-bar button, #player-bar input').forEach(el => { el.disabled = !enabled; });
     }
 
     seekBar.addEventListener('mousedown', () => { isDraggingSeek = true; });
     seekBar.addEventListener('touchstart', () => { isDraggingSeek = true; });
-
     seekBar.addEventListener('input', () => {
-        const targetFrame = parseInt(seekBar.value, 10);
-        updateTimeText(targetFrame);
+        updateTimeText(parseInt(seekBar.value, 10));
     });
-
     seekBar.addEventListener('change', () => {
         const targetFrame = parseInt(seekBar.value, 10);
         sendControl({ action: 'seek', frame: targetFrame }).then(() => {
@@ -1267,6 +1274,7 @@ HTML_TEMPLATE = """
     });
 
     function togglePause() {
+        if (!hasVideo) return;
         sendControl({ action: 'toggle_pause' });
     }
 
@@ -1287,11 +1295,22 @@ HTML_TEMPLATE = """
         })
         .then(res => res.json())
         .then(data => {
-            if (typeof data.paused === 'boolean') {
-                playPauseBtn.textContent = data.paused ? '▶ 再生' : '❚❚ 一時停止';
-            }
+            if (typeof data.paused === 'boolean') setPlayLabel(data.paused);
         });
     }
+
+    // 映像のクリック、キーボード（スペース／左右キー）でも操作できる
+    streamImg.addEventListener('click', togglePause);
+    document.getElementById('player-bar').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (b) b.blur();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (!hasVideo || e.target !== document.body) return;
+        if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+        else if (e.code === 'ArrowLeft') { e.preventDefault(); skipSeconds(-5); }
+        else if (e.code === 'ArrowRight') { e.preventDefault(); skipSeconds(5); }
+    });
 
     function startProgressPolling() {
         if (progressTimer) clearInterval(progressTimer);
@@ -1303,16 +1322,15 @@ HTML_TEMPLATE = """
                         seekBar.value = data.current_frame;
                         updateTimeText(data.current_frame);
                     }
-                    playPauseBtn.textContent = data.paused ? '▶ 再生' : '❚❚ 一時停止';
+                    setPlayLabel(data.paused);
 
-                    // ポップアップ顔検出通知処理
                     const actionMode = document.querySelector('input[name="action_mode"]:checked').value;
                     const badgesWrap = document.getElementById('active-detect-badges');
                     const detections = data.detected_persons || [];
 
                     if (actionMode === 'notify') {
                         badgesWrap.innerHTML = detections.map(d =>
-                            `<span class="detect-pill">検出中: ${escapeHtml(d.name)}</span>`
+                            `<span class="pill">${escapeHtml(d.name)}</span>`
                         ).join('');
 
                         if (!data.paused && detections.length > 0) {
@@ -1331,66 +1349,78 @@ HTML_TEMPLATE = """
         }, 250);
     }
 
-    // 動画ドロップ＆選択セットアップ
+    /* ---------- 動画の読み込み ---------- */
     const videoDrop = document.getElementById('video-drop');
     const videoInput = document.getElementById('video-input');
     videoDrop.addEventListener('click', () => videoInput.click());
-    videoDrop.addEventListener('dragover', (e) => { e.preventDefault(); videoDrop.classList.add('dragover'); });
-    videoDrop.addEventListener('dragleave', () => videoDrop.classList.remove('dragover'));
-    videoDrop.addEventListener('drop', (e) => {
+    stage.addEventListener('dragover', (e) => { e.preventDefault(); stage.classList.add('dragover'); });
+    stage.addEventListener('dragleave', (e) => {
+        if (!stage.contains(e.relatedTarget)) stage.classList.remove('dragover');
+    });
+    stage.addEventListener('drop', (e) => {
         e.preventDefault();
-        videoDrop.classList.remove('dragover');
+        stage.classList.remove('dragover');
         if (e.dataTransfer.files.length > 0) uploadVideoFile(e.dataTransfer.files[0]);
     });
     videoInput.addEventListener('change', () => {
         if (videoInput.files.length > 0) uploadVideoFile(videoInput.files[0]);
+        videoInput.value = '';
     });
 
     function uploadVideoFile(file) {
         if (file.type !== 'video/mp4') {
-            alert('MP4形式の動画ファイルを選択してください。');
+            alert('MP4形式の動画ファイルを選んでください。');
             return;
         }
         const statusText = document.getElementById('status');
         const videoStatus = document.getElementById('video-status');
-        const streamImg = document.getElementById('stream-img');
-        const playerBar = document.getElementById('player-bar');
-        const exportCard = document.getElementById('export-card');
+        const exportStatus = document.getElementById('export-status-text');
 
-        statusText.textContent = '動画を読み込み中...';
+        statusText.textContent = '動画を読み込んでいます…';
         const formData = new FormData();
         formData.append('video', file);
 
         fetch('/upload_video', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'ok') {
-                    hasVideo = true;
-                    totalFrames = data.total_frames;
-                    videoFps = data.fps;
-                    renderPersons(); // 動画読み込み完了後に人物カードの補強ボタンを有効化
-
-                    seekBar.max = Math.max(0, totalFrames - 1);
-                    seekBar.value = 0;
-                    updateTimeText(0);
-
-                    videoStatus.textContent = `選択中: ${file.name} (${formatTime(totalFrames / videoFps)})`;
-                    statusText.textContent = '再生・リアルタイム認識処理中...';
-
-                    streamImg.src = '/video_feed?' + new Date().getTime();
-                    streamImg.style.display = 'block';
-                    playerBar.style.display = 'flex';
-                    exportCard.style.display = 'flex';
-
-                    document.getElementById('manual-download-btn').style.display = 'none';
-                    document.getElementById('export-progress-bg').style.display = 'none';
-                    document.getElementById('export-status-text').textContent = '現在の設定で動画全体を高速書き出しします';
-
-                    startProgressPolling();
+                if (data.status !== 'ok') {
+                    statusText.textContent = '動画を読み込めませんでした。別のファイルをお試しください。';
+                    return;
                 }
+                hasVideo = true;
+                totalFrames = data.total_frames;
+                videoFps = data.fps;
+                renderPersons();
+
+                seekBar.max = Math.max(1, totalFrames - 1);
+                seekBar.value = 0;
+                updateTimeText(0);
+                setControlsEnabled(true);
+                setPlayLabel(false);
+
+                videoStatus.textContent = `${file.name}（${formatTime(totalFrames / videoFps)}）`;
+                statusText.textContent = 'スペースキーで再生・一時停止。設定は再生中も反映されます';
+
+                stage.classList.remove('empty');
+                stage.classList.add('live');
+                streamImg.src = '/video_feed?' + new Date().getTime();
+                document.getElementById('change-video-btn').style.display = 'inline-flex';
+
+                document.getElementById('export-btn').disabled = false;
+                document.getElementById('manual-download-btn').style.display = 'none';
+                document.getElementById('export-progress-bg').style.display = 'none';
+                exportStatus.className = 'export-status';
+                exportStatus.textContent = '現在の設定で、動画全体を書き出せます';
+                updateSettings();
+
+                startProgressPolling();
+            })
+            .catch(() => {
+                statusText.textContent = '通信に失敗しました。もう一度お試しください。';
             });
     }
 
+    /* ---------- 設定 ---------- */
     function updateSettings() {
         const actionMode = document.querySelector('input[name="action_mode"]:checked').value;
         const mosaicTargetMode = document.querySelector('input[name="mosaic_target_mode"]:checked').value;
@@ -1400,12 +1430,12 @@ HTML_TEMPLATE = """
         const showDebug = document.getElementById('show-debug').checked;
 
         document.getElementById('thresh-val').textContent = threshold.toFixed(2);
-        document.getElementById('interp-val').textContent = interpGap === 0 ? 'OFF' : `${interpGap}f`;
+        document.getElementById('interp-val').textContent = interpGap === 0 ? 'なし' : `${interpGap}フレーム`;
         document.getElementById('mosaic-scale-val').textContent = mosaicScale;
 
-        // モードに応じてオプションバーを切り替え
         document.getElementById('mosaic-options-bar').style.display = (actionMode === 'mosaic') ? 'flex' : 'none';
-        document.getElementById('notify-options-bar').style.display = (actionMode === 'notify') ? 'flex' : 'none';
+        document.getElementById('notify-options-bar').style.display = (actionMode === 'notify') ? 'block' : 'none';
+        document.getElementById('detect-strip').style.display = (actionMode === 'notify') ? 'flex' : 'none';
 
         fetch('/update_settings', {
             method: 'POST',
@@ -1421,6 +1451,7 @@ HTML_TEMPLATE = """
         });
     }
 
+    /* ---------- 書き出し ---------- */
     function startExport() {
         const exportBtn = document.getElementById('export-btn');
         const progressBg = document.getElementById('export-progress-bg');
@@ -1432,13 +1463,15 @@ HTML_TEMPLATE = """
         downloadBtn.style.display = 'none';
         progressBg.style.display = 'block';
         progressFill.style.width = '0%';
-        statusText.textContent = '書き出し準備中（プレビューを一時停止しました）...';
+        statusText.className = 'export-status';
+        statusText.textContent = '準備しています（プレビューは一時停止します）…';
 
         fetch('/export_video', { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.status !== 'ok') {
                     exportBtn.disabled = false;
+                    statusText.className = 'export-status error';
                     statusText.textContent = data.message || 'エラーが発生しました';
                     return;
                 }
@@ -1454,20 +1487,25 @@ HTML_TEMPLATE = """
                             if (st.status === 'done') {
                                 clearInterval(exportTimer);
                                 exportBtn.disabled = false;
-                                downloadBtn.style.display = 'inline-block';
+                                downloadBtn.style.display = 'inline-flex';
                                 window.location.href = '/download_video?t=' + new Date().getTime();
                             } else if (st.status === 'error') {
                                 clearInterval(exportTimer);
                                 exportBtn.disabled = false;
+                                statusText.className = 'export-status error';
                             }
                         });
                 }, 250);
             })
             .catch(() => {
                 exportBtn.disabled = false;
-                statusText.textContent = '通信エラーが発生しました';
+                statusText.className = 'export-status error';
+                statusText.textContent = '通信に失敗しました。もう一度お試しください。';
             });
     }
+
+    // 画面の初期状態をサーバー側の設定にも反映する
+    updateSettings();
 </script>
 </body>
 </html>
