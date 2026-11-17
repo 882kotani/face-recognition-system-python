@@ -1,0 +1,4 @@
+flask
+opencv-python>=4.5.4
+numpy
+Pillow

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 特定人物 顔認識モザイク (Frontend)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+        .step-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        .card h3 {
+            margin-top: 0;
+            font-size: 16px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .drop-zone {
+            height: 86px;
+            border: 2px dashed #007bff;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #fafcff;
+            cursor: pointer;
+            text-align: center;
+            padding: 8px;
+            transition: 0.2s;
+            font-size: 13px;
+            color: #555;
+        }
+        .drop-zone.dragover { background: #e3f2fd; border-color: #0056b3; }
+        #target-list {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; min-height: 24px;
+        }
+        .target-chip {
+            position: relative; width: 54px; height: 54px; border-radius: 6px;
+            overflow: hidden; border: 2px solid #28a745; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .target-chip.boost { border-color: #ff9800; }
+        .target-chip img { width: 100%; height: 100%; object-fit: cover; }
+        .target-chip .badge {
+            position: absolute; bottom: 0; left: 0; right: 0; font-size: 9px;
+            text-align: center; background: rgba(0,0,0,0.65); color: #fff; padding: 1px 0;
+        }
+        .target-chip .del-btn {
+            position: absolute; top: 1px; right: 1px; background: rgba(220, 53, 69, 0.9);
+            color: #fff; border: none; border-radius: 50%; width: 16px; height: 16px;
+            font-size: 10px; line-height: 14px; cursor: pointer; padding: 0;
+        }
+        .boost-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .sub-btn {
+            background: #f8f9fa; border: 1px solid #ced4da; border-radius: 4px;
+            padding: 5px 10px; font-size: 12px; cursor: pointer; color: #333; transition: 0.15s;
+        }
+        .sub-btn:hover:not(:disabled) { background: #e2e6ea; }
+        .sub-btn.accent { background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold; }
+        .sub-btn.accent:hover:not(:disabled) { background: #ffe69c; }
+        .sub-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .controls { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .control-group { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+        #status { text-align: center; margin-bottom: 10px; font-weight: bold; color: #0056b3; }
+        
+        .player-wrapper { width: 100%; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 16px; }
+        #preview-box { width: 100%; display: flex; justify-content: center; align-items: center; min-height: 240px; background: #111; }
+        #stream-img { width: 100%; height: auto; display: none; }
+        #player-bar { display: none; background: #1e2229; color: #fff; padding: 10px 16px 14px; flex-direction: column; gap: 8px; }
+        #seek-bar { width: 100%; cursor: pointer; accent-color: #007bff; height: 6px; }
+        .player-buttons { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+        .btn-group { display: flex; align-items: center; gap: 8px; }
+        .player-btn { background: #2f3542; color: #fff; border: 1px solid #444c5c; border-radius: 4px; padding: 5px 12px; font-size: 13px; cursor: pointer; transition: 0.15s; }
+        .player-btn:hover { background: #007bff; border-color: #007bff; }
+        #time-display { font-family: monospace; font-size: 14px; color: #d1d8e0; }
+        
+        #export-card { display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+        .primary-btn { background: #28a745; color: #fff; border: none; border-radius: 6px; padding: 10px 20px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .primary-btn:hover:not(:disabled) { background: #218838; }
+        .primary-btn:disabled { background: #94d3a2; cursor: not-allowed; }
+        .download-link-btn { display: none; background: #007bff; color: #fff; text-decoration: none; border-radius: 6px; padding: 10px 18px; font-size: 14px; font-weight: bold; }
+        .download-link-btn:hover { background: #0056b3; }
+        .progress-area { flex: 1; min-width: 240px; }
+        .progress-bg { width: 100%; height: 10px; background: #e9ecef; border-radius: 5px; overflow: hidden; margin-top: 6px; display: none; }
+        .progress-fill { height: 100%; width: 0%; background: #28a745; transition: width 0.2s; }
+        #export-status-text { font-size: 13px; color: #555; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2 style="text-align:center;">AI 特定人物 顔認識モザイク</h2>
+
+    <div class="step-grid">
+        <div class="card">
+            <h3>
+                <span>1. 検出したい人の顔写真</span>
+                <button class="sub-btn" onclick="clearTargets()" style="font-size:11px;">全クリア</button>
+            </h3>
+            <div id="face-drop" class="drop-zone">
+                <span>顔写真 (JPG / PNG) をドロップ<br>複数枚の追加や左右反転にも自動対応</span>
+                <input type="file" id="face-input" accept="image/*" multiple style="display: none;">
+            </div>
+            <div id="target-list"></div>
+            <div id="face-status" style="font-size:12px; color:#666; margin-top:6px;">未登録</div>
+
+            <div class="boost-actions">
+                <button id="boost-btn" class="sub-btn accent" onclick="boostFromVideo()" disabled>⚡ 動画内の本人顔で自動補強</button>
+                <button id="capture-frame-btn" class="sub-btn" onclick="captureCurrentFrameFace()" disabled>＋ 今映っている顔を追加</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>2. 処理する動画ファイル</h3>
+            <div id="video-drop" class="drop-zone">
+                <span>MP4 ファイルをドロップ<br>またはクリックして選択</span>
+                <input type="file" id="video-input" accept="video/mp4" style="display: none;">
+            </div>
+            <div style="margin-top: 12px; font-size: 13px; color: #666;" id="video-status">動画未選択</div>
+        </div>
+    </div>
+
+    <div class="card controls">
+        <div class="control-group">
+            <strong>モザイク対象:</strong>
+            <label><input type="radio" name="mode" value="target_only" checked onchange="updateSettings()"> 特定の人「だけ」</label>
+            <label><input type="radio" name="mode" value="except_target" onchange="updateSettings()"> 特定の人「以外」</label>
+        </div>
+        <div class="control-group">
+            <label for="threshold"><strong>一致閾値:</strong> <span id="thresh-val">0.36</span></label>
+            <input type="range" id="threshold" min="0.20" max="0.65" step="0.01" value="0.36" oninput="updateSettings()">
+        </div>
+        <div class="control-group">
+            <label><input type="checkbox" id="show-debug" checked onchange="updateSettings()"> 判定枠・スコア表示</label>
+        </div>
+    </div>
+
+    <div id="status">バックエンドに接続待機中...</div>
+
+    <div class="player-wrapper">
+        <div id="preview-box">
+            <img id="stream-img" alt="映像ストリーム">
+        </div>
+        <div id="player-bar">
+            <input type="range" id="seek-bar" min="0" max="100" value="0">
+            <div class="player-buttons">
+                <div class="btn-group">
+                    <button class="player-btn" id="play-pause-btn" onclick="togglePause()">❚❚ 一時停止</button>
+                    <button class="player-btn" onclick="skipSeconds(-5)">◀ 5秒戻す</button>
+                    <button class="player-btn" onclick="skipSeconds(5)">5秒進む ▶</button>
+                </div>
+                <div id="time-display">00:00 / 00:00</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="export-card">
+        <div class="progress-area">
+            <div id="export-status-text">現在の設定で動画全体を高速書き出しします</div>
+            <div class="progress-bg" id="export-progress-bg">
+                <div class="progress-fill" id="export-progress-fill"></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <a id="manual-download-btn" class="download-link-btn" href="#" target="_blank">⬇ MP4を保存</a>
+            <button id="export-btn" class="primary-btn" onclick="startExport()">処理済み動画を書き出し</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===== バックエンドの URL 設定 =====
+    const API_BASE = 'http://127.0.0.1:5000';
+
+    let totalFrames = 0;
+    let videoFps = 30.0;
+    let hasVideo = false;
+    let hasTargets = false;
+    let isDraggingSeek = false;
+    let progressTimer = null;
+    let exportTimer = null;
+
+    const seekBar = document.getElementById('seek-bar');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const timeDisplay = document.getElementById('time-display');
+
+    // 初期化時にバックエンド接続確認
+    document.getElementById('status').textContent = '顔写真と動画を選択してください';
+    document.getElementById('manual-download-btn').href = `${API_BASE}/download_video`;
+
+    function updateActionButtons() {
+        document.getElementById('boost-btn').disabled = !(hasVideo && hasTargets);
+        document.getElementById('capture-frame-btn').disabled = !hasVideo;
+    }
+
+    function renderTargetList(entries) {
+        const listEl = document.getElementById('target-list');
+        listEl.innerHTML = '';
+        hasTargets = entries && entries.length > 0;
+        entries.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'target-chip' + (item.source === 'boost' ? ' boost' : '');
+            div.innerHTML = `
+                <img src="data:image/jpeg;base64,${item.crop_b64}" alt="顔">
+                <span class="badge">${item.source === 'boost' ? '動画抽出' : '登録画像'}</span>
+                <button class="del-btn" onclick="removeTarget('${item.id}')">×</button>
+            `;
+            listEl.appendChild(div);
+        });
+        updateActionButtons();
+    }
+
+    function removeTarget(id) {
+        fetch(`${API_BASE}/remove_target`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        }).then(res => res.json()).then(data => {
+            renderTargetList(data.entries || []);
+            document.getElementById('face-status').textContent = data.entries.length > 0 ? `登録済み: ${data.entries.length}枚` : '未登録';
+        });
+    }
+
+    function clearTargets() {
+        fetch(`${API_BASE}/clear_targets`, { method: 'POST' }).then(() => {
+            renderTargetList([]);
+            document.getElementById('face-status').textContent = '登録をクリアしました';
+        });
+    }
+
+    function boostFromVideo() {
+        const btn = document.getElementById('boost-btn');
+        const faceStatus = document.getElementById('face-status');
+        btn.disabled = true;
+        faceStatus.textContent = '自動抽出中...';
+        
+        fetch(`${API_BASE}/boost_from_video`, { method: 'POST' }).then(res => res.json()).then(data => {
+            btn.disabled = false;
+            if (data.status === 'ok') {
+                renderTargetList(data.entries);
+                faceStatus.textContent = data.message;
+            } else {
+                faceStatus.textContent = data.message;
+            }
+        });
+    }
+
+    function captureCurrentFrameFace() {
+        fetch(`${API_BASE}/add_current_frame_face`, { method: 'POST' }).then(res => res.json()).then(data => {
+            if (data.status === 'ok') {
+                renderTargetList(data.entries);
+                document.getElementById('face-status').textContent = data.message;
+            }
+        });
+    }
+
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    function updateTimeText(currentFrame) {
+        timeDisplay.textContent = `${formatTime(currentFrame / videoFps)} / ${formatTime(totalFrames / videoFps)}`;
+    }
+
+    seekBar.addEventListener('mousedown', () => isDraggingSeek = true);
+    seekBar.addEventListener('touchstart', () => isDraggingSeek = true);
+    seekBar.addEventListener('input', () => updateTimeText(parseInt(seekBar.value, 10)));
+    seekBar.addEventListener('change', () => {
+        sendControl({ action: 'seek', frame: parseInt(seekBar.value, 10) }).then(() => isDraggingSeek = false);
+    });
+
+    function togglePause() { sendControl({ action: 'toggle_pause' }); }
+    function skipSeconds(sec) {
+        const target = Math.max(0, Math.min(totalFrames - 1, parseInt(seekBar.value, 10) + Math.round(sec * videoFps)));
+        seekBar.value = target;
+        updateTimeText(target);
+        sendControl({ action: 'seek', frame: target });
+    }
+
+    function sendControl(payload) {
+        return fetch(`${API_BASE}/control`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(res => res.json()).then(data => {
+            if (typeof data.paused === 'boolean') playPauseBtn.textContent = data.paused ? '▶ 再生' : '❚❚ 一時停止';
+        });
+    }
+
+    function startProgressPolling() {
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = setInterval(() => {
+            fetch(`${API_BASE}/progress`).then(res => res.json()).then(data => {
+                if (!isDraggingSeek && totalFrames > 0) {
+                    seekBar.value = data.current_frame;
+                    updateTimeText(data.current_frame);
+                }
+                playPauseBtn.textContent = data.paused ? '▶ 再生' : '❚❚ 一時停止';
+            }).catch(() => {});
+        }, 250);
+    }
+
+    function setupDropZone(zoneId, inputId, handler) {
+        const zone = document.getElementById(zoneId), input = document.getElementById(inputId);
+        zone.addEventListener('click', () => input.click());
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('dragover'); if (e.dataTransfer.files.length) handler(e.dataTransfer.files); });
+        input.addEventListener('change', () => { if (input.files.length) handler(input.files); });
+    }
+
+    setupDropZone('face-drop', 'face-input', (files) => {
+        const fd = new FormData();
+        for (let i = 0; i < files.length; i++) fd.append('face_image', files[i]);
+        document.getElementById('face-status').textContent = '顔を解析中...';
+        
+        fetch(`${API_BASE}/upload_target`, { method: 'POST', body: fd })
+            .then(res => res.json()).then(data => {
+                if (data.status === 'ok') {
+                    renderTargetList(data.entries);
+                    document.getElementById('face-status').textContent = data.message;
+                }
+            });
+    });
+
+    setupDropZone('video-drop', 'video-input', (files) => {
+        const file = files[0];
+        if (file.type !== 'video/mp4') return alert('MP4形式の動画ファイルを選択してください。');
+        
+        const fd = new FormData();
+        fd.append('video', file);
+        document.getElementById('status').textContent = '動画をアップロード中...';
+        
+        fetch(`${API_BASE}/upload_video`, { method: 'POST', body: fd })
+            .then(res => res.json()).then(data => {
+                if (data.status === 'ok') {
+                    hasVideo = true;
+                    totalFrames = data.total_frames;
+                    videoFps = data.fps;
+                    updateActionButtons();
+                    seekBar.max = totalFrames - 1; seekBar.value = 0; updateTimeText(0);
+                    
+                    document.getElementById('video-status').textContent = `選択中: ${file.name}`;
+                    document.getElementById('status').textContent = '再生・処理中...';
+                    document.getElementById('stream-img').src = `${API_BASE}/video_feed?` + new Date().getTime();
+                    document.getElementById('stream-img').style.display = 'block';
+                    document.getElementById('player-bar').style.display = 'flex';
+                    document.getElementById('export-card').style.display = 'flex';
+                    document.getElementById('manual-download-btn').style.display = 'none';
+                    document.getElementById('export-progress-bg').style.display = 'none';
+                    
+                    startProgressPolling();
+                }
+            });
+    });
+
+    function updateSettings() {
+        const payload = {
+            mode: document.querySelector('input[name="mode"]:checked').value,
+            threshold: parseFloat(document.getElementById('threshold').value),
+            show_debug: document.getElementById('show-debug').checked
+        };
+        document.getElementById('thresh-val').textContent = payload.threshold.toFixed(2);
+        fetch(`${API_BASE}/update_settings`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+    }
+
+    function startExport() {
+        const btn = document.getElementById('export-btn'), statusText = document.getElementById('export-status-text');
+        btn.disabled = true;
+        document.getElementById('manual-download-btn').style.display = 'none';
+        document.getElementById('export-progress-bg').style.display = 'block';
+        document.getElementById('export-progress-fill').style.width = '0%';
+        statusText.textContent = '準備中...';
+
+        fetch(`${API_BASE}/export_video`, { method: 'POST' }).then(res => res.json()).then(data => {
+            if (data.status !== 'ok') {
+                btn.disabled = false; statusText.textContent = data.message; return;
+            }
+            if (exportTimer) clearInterval(exportTimer);
+            exportTimer = setInterval(() => {
+                fetch(`${API_BASE}/export_status`).then(res => res.json()).then(st => {
+                    document.getElementById('export-progress-fill').style.width = st.progress + '%';
+                    statusText.textContent = st.message;
+                    if (st.status === 'done') {
+                        clearInterval(exportTimer);
+                        btn.disabled = false;
+                        document.getElementById('manual-download-btn').style.display = 'inline-block';
+                        window.location.href = `${API_BASE}/download_video?t=` + new Date().getTime();
+                    } else if (st.status === 'error') {
+                        clearInterval(exportTimer);
+                        btn.disabled = false;
+                    }
+                });
+            }, 250);
+        });
+    }
+</script>
+</body>
+</html>
